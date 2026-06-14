@@ -5,20 +5,22 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Todo {
-    id: u32,
-    content: String,
-    completed: bool,
-    created_at: String,
+    id: u32,            // id值
+    content: String,    // 待办内容
+    completed: bool,    // 是否完成
+    created_at: String, // 创建日期
+    priority: u8,       // 待办的重要程度 0-普通，默认颜色；1-高，黄色；2-紧急，红色
 }
 
 impl Todo {
-    fn new(id: u32, content: String) -> Self {
+    fn new(id: u32, content: String, priority: u8) -> Self {
         let now = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
         Todo {
             id,
             content,
             completed: false,
             created_at: now,
+            priority,
         }
     }
 }
@@ -37,6 +39,9 @@ enum Commands {
         /// The task description
         #[arg(required = true)]
         content: String,
+        // The priority of the task (0: 普通, 1:高, 2:紧急)
+        #[arg(short, long, default_value_t = 0)]
+        priority: u8,
     },
     /// List todos(pending by default)
     List {
@@ -78,10 +83,26 @@ fn save_todos(todos: &[Todo]) {
     fs::write(&path, json).expect("Failed to write todos file");
 }
 
-fn cmd_add(todos: &mut Vec<Todo>, content: String) {
+fn cmd_add(todos: &mut Vec<Todo>, content: String, priority: u8) {
     let new_id = todos.iter().map(|t| t.id).max().unwrap_or(0) + 1;
-    let todo = Todo::new(new_id, content);
-    println!("\x1b[32m✓\x1b[0m Added #{}: {}", todo.id, todo.content);
+    let todo = Todo::new(new_id, content, priority);
+    match priority {
+        1 => {
+            println!(
+                "\x1b[32m✓\x1b[0m Added \x1b[33m#{}: {}\x1b[0m",
+                todo.id, todo.content
+            );
+        }
+        2 => {
+            println!(
+                "\x1b[32m✓\x1b[0m Added \x1b[31m#{}: {}\x1b[0m",
+                todo.id, todo.content
+            );
+        }
+        _ => {
+            println!("\x1b[32m✓\x1b[0m Added #{}: {}", todo.id, todo.content);
+        }
+    }
     todos.push(todo);
 }
 
@@ -106,7 +127,24 @@ fn cmd_list(todos: &[Todo], all: bool) {
                 t.id, t.content, t.created_at
             );
         } else {
-            println!("  [{}] {} ({})", t.id, t.content, t.created_at);
+            match t.priority {
+                1 => {
+                    println!(
+                        "   \x1b[33m[{}] {} ({})\x1b[0m",
+                        t.id, t.content, t.created_at
+                    );
+                }
+                2 => {
+                    println!(
+                        "   \x1b[31m[{}] {} ({})\x1b[0m",
+                        t.id, t.content, t.created_at
+                    );
+                }
+                _ => {
+                    println!("   [{}] {} ({})", t.id, t.content, t.created_at);
+                }
+            }
+            // println!("  [{}] {} ({})", t.id, t.content, t.created_at);
         }
     }
 }
@@ -140,8 +178,8 @@ fn main() {
     let mut todos = load_todos();
 
     match cli.command {
-        Commands::Add { content } => {
-            cmd_add(&mut todos, content);
+        Commands::Add { content, priority } => {
+            cmd_add(&mut todos, content, priority);
             save_todos(&todos);
         }
         Commands::List { all } => {
