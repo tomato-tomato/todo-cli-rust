@@ -1,3 +1,4 @@
+use chrono::{DateTime, Local};
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -5,21 +6,21 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Todo {
-    id: u32,            // id值
-    content: String,    // 待办内容
-    completed: bool,    // 是否完成
-    created_at: String, // 创建日期
-    priority: u8,       // 待办的重要程度 0-普通，默认颜色；1-高，黄色；2-紧急，红色
+    id: u32,                     // id值
+    content: String,             // 待办内容
+    completed: bool,             // 是否完成
+    created_at: DateTime<Local>, // 创建日期
+    priority: u8,                // 待办的重要程度 0-普通，默认颜色；1-高，黄色；2-紧急，红色
 }
 
 impl Todo {
     fn new(id: u32, content: String, priority: u8) -> Self {
-        let now = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
+        // let now = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
         Todo {
             id,
             content,
             completed: false,
-            created_at: now,
+            created_at: Local::now(),
             priority,
         }
     }
@@ -129,24 +130,35 @@ fn cmd_list(todos: &[Todo], all: bool) {
         if t.completed {
             println!(
                 "   \x1b[9m[{}] {}\x1b[0m  \x1b[32m✓ done\x1b[0m  ({})",
-                t.id, t.content, t.created_at
+                t.id,
+                t.content,
+                t.created_at.format("%Y-%m-%d %H:%M")
             );
         } else {
             match t.priority {
                 1 => {
                     println!(
                         "   \x1b[33m[{}] {} ({})\x1b[0m",
-                        t.id, t.content, t.created_at
+                        t.id,
+                        t.content,
+                        t.created_at.format("%Y-%m-%d %H:%M")
                     );
                 }
                 2 => {
                     println!(
                         "   \x1b[31m[{}] {} ({})\x1b[0m",
-                        t.id, t.content, t.created_at
+                        t.id,
+                        t.content,
+                        t.created_at.format("%Y-%m-%d %H:%M")
                     );
                 }
                 _ => {
-                    println!("   [{}] {} ({})", t.id, t.content, t.created_at);
+                    println!(
+                        "   [{}] {} ({})",
+                        t.id,
+                        t.content,
+                        t.created_at.format("%Y-%m-%d %H:%M")
+                    );
                 }
             }
             // println!("  [{}] {} ({})", t.id, t.content, t.created_at);
