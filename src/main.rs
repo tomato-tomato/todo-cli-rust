@@ -54,6 +54,9 @@ enum Commands {
     Done {
         /// the Id of the todo to complete
         id: u32,
+        /// undo the task
+        #[arg(long)]
+        undo: bool,
     },
     /// Remove a todo
     Remove {
@@ -166,11 +169,12 @@ fn cmd_list(todos: &[Todo], all: bool) {
     }
 }
 
-fn cmd_done(todos: &mut Vec<Todo>, id: u32) {
+fn cmd_done(todos: &mut Vec<Todo>, id: u32, undo: bool) {
     match todos.iter_mut().find(|t| t.id == id) {
         Some(todo) => {
-            todo.completed = true;
-            println!("\x1b[32m✓\x1b[0m Done #{}: {}", id, todo.content);
+            let sign = if undo { "Undo" } else { "Done" };
+            todo.completed = !undo;
+            println!("\x1b[32m✓\x1b[0m {} #{}: {}", sign, id, todo.content);
         }
         None => {
             eprint!("Todo #{} not found.", id);
@@ -211,8 +215,8 @@ fn main() {
         Commands::List { all } => {
             cmd_list(&todos, all);
         }
-        Commands::Done { id } => {
-            cmd_done(&mut todos, id);
+        Commands::Done { id, undo } => {
+            cmd_done(&mut todos, id, undo);
             save_todos(&todos);
         }
         Commands::Remove { id } => {
