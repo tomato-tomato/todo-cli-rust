@@ -59,6 +59,11 @@ enum Commands {
         /// The ID of the todo to remove
         id: u32,
     },
+    // Search the task include content
+    Search {
+        /// The content for search
+        keyword: String,
+    },
 }
 
 fn data_file() -> PathBuf {
@@ -173,6 +178,15 @@ fn cmd_remove(todos: &mut Vec<Todo>, id: u32) {
     }
 }
 
+fn cmd_search(todos: &[Todo], keyword: String) {
+    let get_items: Vec<Todo> = todos
+        .iter()
+        .filter(|t| t.content.contains(&keyword))
+        .cloned()
+        .collect();
+    cmd_list(&get_items, true);
+}
+
 fn main() {
     let cli = Cli::parse();
     let mut todos = load_todos();
@@ -192,6 +206,9 @@ fn main() {
         Commands::Remove { id } => {
             cmd_remove(&mut todos, id);
             save_todos(&todos);
+        }
+        Commands::Search { keyword } => {
+            cmd_search(&mut todos, keyword);
         }
     }
 }
