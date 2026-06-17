@@ -1,5 +1,6 @@
 use chrono::{DateTime, Local};
 use clap::{Parser, Subcommand};
+use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -10,7 +11,8 @@ struct Todo {
     content: String,             // 待办内容
     completed: bool,             // 是否完成
     created_at: DateTime<Local>, // 创建日期
-    priority: u8,                // 待办的重要程度 0-普通，默认颜色；1-高，黄色；2-紧急，红色
+    #[serde(default)]
+    priority: u8, // 待办的重要程度 0-普通，默认颜色；1-高，黄色；2-紧急，红色
 }
 
 impl Todo {
@@ -63,7 +65,7 @@ enum Commands {
         /// The ID of the todo to remove
         id: u32,
     },
-    // Search the task include content
+    /// Search the task include content
     Search {
         /// The content for search
         keyword: String,
@@ -92,26 +94,61 @@ fn save_todos(todos: &[Todo]) {
     fs::write(&path, json).expect("Failed to write todos file");
 }
 
+fn print_todos(label: &str, items: &[&Todo]) {
+    if items.is_empty() {
+        println!("Nothing here.");
+        return;
+    }
+    println!("  {} ({})", label, items.len());
+    for t in items {
+        let priority_tag = match t.priority {
+            2 => format!("  {}", "!!urgent".red().bold()),
+            1 => format!("  {}", "! high".yellow()),
+            _ => String::new(),
+        };
+        if t.completed {
+            println!(
+                "   {}{}  {} ({}){}",
+                format!("[{}]", t.id).dimmed(),
+                t.content.strikethrough(),
+                "✔ done".green(),
+                t.created_at.format("%Y-%m-%d %H:%M"),
+                priority_tag,
+            );
+        } else {
+            println!(
+                "   [{}] {} ({}){}",
+                t.id,
+                t.content,
+                t.created_at.format("%Y-%m-%d %H:%M"),
+                priority_tag,
+            );
+        }
+    }
+}
+
 fn cmd_add(todos: &mut Vec<Todo>, content: String, priority: u8) {
     let new_id = todos.iter().map(|t| t.id).max().unwrap_or(0) + 1;
     let todo = Todo::new(new_id, content, priority);
-    match priority {
-        1 => {
-            println!(
-                "\x1b[32m✓\x1b[0m Added \x1b[33m#{}: {}\x1b[0m",
-                todo.id, todo.content
-            );
-        }
-        2 => {
-            println!(
-                "\x1b[32m✓\x1b[0m Added \x1b[31m#{}: {}\x1b[0m",
-                todo.id, todo.content
-            );
-        }
-        _ => {
-            println!("\x1b[32m✓\x1b[0m Added #{}: {}", todo.id, todo.content);
-        }
-    }
+    let priority_info = if priority > 0 {
+        format!(
+            "   [{}]",
+            match priority {
+                2 => "urgent".red().bold().to_string(),
+                1 => "high".yellow().to_string(),
+                _ => "normal".to_string(),
+            }
+        )
+    } else {
+        String::new()
+    };
+    println!(
+        "{} Added #{}: {}{}",
+        "✔".green(),
+        todo.id,
+        todo.content,
+        priority_info
+    );
     todos.push(todo);
 }
 
@@ -128,45 +165,7 @@ fn cmd_list(todos: &[Todo], all: bool) {
     }
 
     let label = if all { "All" } else { "Pending" };
-    println!("  {} ({}):", label, items.len());
-    for t in &items {
-        if t.completed {
-            println!(
-                "   \x1b[9m[{}] {}\x1b[0m  \x1b[32m✓ done\x1b[0m  ({})",
-                t.id,
-                t.content,
-                t.created_at.format("%Y-%m-%d %H:%M")
-            );
-        } else {
-            match t.priority {
-                1 => {
-                    println!(
-                        "   \x1b[33m[{}] {} ({})\x1b[0m",
-                        t.id,
-                        t.content,
-                        t.created_at.format("%Y-%m-%d %H:%M")
-                    );
-                }
-                2 => {
-                    println!(
-                        "   \x1b[31m[{}] {} ({})\x1b[0m",
-                        t.id,
-                        t.content,
-                        t.created_at.format("%Y-%m-%d %H:%M")
-                    );
-                }
-                _ => {
-                    println!(
-                        "   [{}] {} ({})",
-                        t.id,
-                        t.content,
-                        t.created_at.format("%Y-%m-%d %H:%M")
-                    );
-                }
-            }
-            // println!("  [{}] {} ({})", t.id, t.content, t.created_at);
-        }
-    }
+    print_todos(label, &items);
 }
 
 fn cmd_done(todos: &mut Vec<Todo>, id: u32, undo: bool) {
