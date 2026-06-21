@@ -47,6 +47,15 @@ enum Commands {
         #[arg(short, long, default_value_t = 0)]
         priority: u8,
     },
+    /// Edit a todo
+    Edit {
+        /// the Id of the todo
+        #[arg(required = true)]
+        id: u32,
+        /// the changed content
+        #[arg(required = true)]
+        content: String,
+    },
     /// List todos(pending by default)
     List {
         /// show all todos including completed
@@ -196,6 +205,19 @@ fn cmd_done(todos: &mut Vec<Todo>, id: u32, undo: bool) {
     }
 }
 
+fn cmd_edit(todos: &mut Vec<Todo>, id: u32, content: &str) {
+    match todos.iter_mut().find(|t| t.id == id) {
+        Some(todo) => {
+            todo.content = content.to_string();
+            println!("{} #{}: {}", "✔ Edit".yellow(), id, content);
+        }
+        None => {
+            eprint!("Todo #{} not found.", id);
+            std::process::exit(1);
+        }
+    }
+}
+
 fn cmd_remove(todos: &mut Vec<Todo>, id: u32) {
     let len_before = todos.len();
     todos.retain(|t| t.id != id);
@@ -244,6 +266,10 @@ fn main() -> Result<()> {
         }
         Commands::Search { keyword } => {
             cmd_search(&todos, &keyword);
+        }
+        Commands::Edit { id, content } => {
+            cmd_edit(&mut todos, id, &content);
+            save_todos(&todos)?;
         }
     }
 
