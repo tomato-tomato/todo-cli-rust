@@ -52,6 +52,9 @@ enum Commands {
         /// show all todos including completed
         #[arg(short, long)]
         all: bool,
+        /// show above the level's priority
+        #[arg(short, long)]
+        priority: Option<u8>,
     },
     /// Mark a todo as done
     Done {
@@ -155,12 +158,20 @@ fn cmd_add(todos: &mut Vec<Todo>, content: String, priority: u8) {
     todos.push(todo);
 }
 
-fn cmd_list(todos: &[Todo], all: bool) {
-    let items: Vec<&Todo> = if all {
-        todos.iter().collect()
-    } else {
-        todos.iter().filter(|t| !t.completed).collect()
-    };
+fn cmd_list(todos: &[Todo], all: bool, priority: Option<u8>) {
+    // let items: Vec<&Todo> = if all {
+    //     todos.iter().collect()
+    // } else {
+    //     todos.iter().filter(|t| !t.completed).collect()
+    // };
+    let items: Vec<&Todo> = todos
+        .iter()
+        .filter(|t| all || !t.completed)
+        .filter(|t| match priority {
+            Some(p) => t.priority > p,
+            None => true,
+        })
+        .collect();
 
     if items.is_empty() {
         println!("Nothing here. Use `tasky add <text>` to create one.");
@@ -220,8 +231,8 @@ fn main() -> Result<()> {
             cmd_add(&mut todos, content, priority);
             save_todos(&todos)?;
         }
-        Commands::List { all } => {
-            cmd_list(&todos, all);
+        Commands::List { all, priority } => {
+            cmd_list(&todos, all, priority);
         }
         Commands::Done { id, undo } => {
             cmd_done(&mut todos, id, undo);
