@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use chrono::{DateTime, Local};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
@@ -79,19 +80,21 @@ fn data_file() -> PathBuf {
     fs::create_dir_all(&dir).expect("Cannot create config directory");
     dir.join("todos.json")
 }
-fn load_todos() -> Vec<Todo> {
+fn load_todos() -> Result<Vec<Todo>> {
     let path = data_file();
     if !path.exists() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
-    let content = fs::read_to_string(&path).expect("Failed to read todos file");
-    serde_json::from_str(&content).unwrap_or_default()
+    let content = fs::read_to_string(&path).context("Failed to read todos file")?;
+    let todos: Vec<Todo> = serde_json::from_str(&content).unwrap_or_default();
+    Ok(todos)
 }
 
-fn save_todos(todos: &[Todo]) {
+fn save_todos(todos: &[Todo]) -> Result<()> {
     let path = data_file();
-    let json = serde_json::to_string_pretty(todos).expect("Failed to serialize todos");
-    fs::write(&path, json).expect("Failed to write todos file");
+    let json = serde_json::to_string_pretty(todos).context("Failed to serialize todos")?;
+    fs::write(&path, json).context("Failed to write todos file")?;
+    Ok(())
 }
 
 fn print_todos(label: &str, items: &[&Todo]) {
@@ -108,7 +111,7 @@ fn print_todos(label: &str, items: &[&Todo]) {
         };
         if t.completed {
             println!(
-                "   {}{}  {} ({}){}",
+                "   {} {}  {} ({}){}",
                 format!("[{}]", t.id).dimmed(),
                 t.content.strikethrough(),
                 "✔ done".green(),
@@ -173,7 +176,7 @@ fn cmd_done(todos: &mut Vec<Todo>, id: u32, undo: bool) {
         Some(todo) => {
             let sign = if undo { "Undo" } else { "Done" };
             todo.completed = !undo;
-            println!("\x1b[32m✓\x1b[0m {} #{}: {}", sign, id, todo.content);
+            println!("{}{} #{}: {}", "✔".green(), sign, id, todo.content);
         }
         None => {
             eprint!("Todo #{} not found.", id);
@@ -193,37 +196,45 @@ fn cmd_remove(todos: &mut Vec<Todo>, id: u32) {
     }
 }
 
-fn cmd_search(todos: &[Todo], keyword: String) {
-    let get_items: Vec<Todo> = todos
+fn cmd_search(todos: &[Todo], keyword: &str) {
+    // let get_items: Vec<Todo> = todos
+    //     .iter()
+    //     .filter(|t| t.content.contains(&keyword))
+    //     .cloned()
+    //     .collect();
+    // cmd_list(&get_items, true);
+    let matches: Vec<&Todo> = todos
         .iter()
         .filter(|t| t.content.contains(&keyword))
-        .cloned()
         .collect();
-    cmd_list(&get_items, true);
+    let label = format!("Search: \"{}\"", keyword);
+    print_todos(&label, &matches);
 }
 
-fn main() {
+fn main() -> Result<()> {
     let cli = Cli::parse();
-    let mut todos = load_todos();
+    let mut todos = load_todos()?;
 
     match cli.command {
         Commands::Add { content, priority } => {
             cmd_add(&mut todos, content, priority);
-            save_todos(&todos);
+            save_todos(&todos)?;
         }
         Commands::List { all } => {
             cmd_list(&todos, all);
         }
         Commands::Done { id, undo } => {
             cmd_done(&mut todos, id, undo);
-            save_todos(&todos);
+            save_todos(&todos)?;
         }
         Commands::Remove { id } => {
             cmd_remove(&mut todos, id);
-            save_todos(&todos);
+            save_todos(&todos)?;
         }
         Commands::Search { keyword } => {
-            cmd_search(&mut todos, keyword);
+            cmd_search(&todos, &keyword);
         }
     }
+
+    Ok(())
 }
