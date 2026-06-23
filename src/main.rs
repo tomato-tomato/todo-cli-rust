@@ -14,6 +14,8 @@ struct Todo {
     created_at: DateTime<Local>, // 创建日期
     #[serde(default)]
     priority: u8, // 待办的重要程度 0-普通，默认颜色；1-高，黄色；2-紧急，红色
+    #[serde(default)]
+    completed_at: Option<DateTime<Local>>,
 }
 
 impl Todo {
@@ -25,6 +27,7 @@ impl Todo {
             completed: false,
             created_at: Local::now(),
             priority,
+            completed_at: None, // 新建时没有完成时间
         }
     }
 }
@@ -122,11 +125,16 @@ fn print_todos(label: &str, items: &[&Todo]) {
             _ => String::new(),
         };
         if t.completed {
+            let completed_time = match &t.completed_at {
+                Some(time) => format!(" ({})", time.format("%Y-%m-%d %H:%M").to_string()),
+                None => String::new(),
+            };
             println!(
-                "   {} {}  {} ({}){}",
+                "   {} {}  {}{} ({}){}",
                 format!("[{}]", t.id).dimmed(),
                 t.content.strikethrough(),
                 "✔ done".green(),
+                completed_time.red(),
                 t.created_at.format("%Y-%m-%d %H:%M"),
                 priority_tag,
             );
@@ -196,6 +204,7 @@ fn cmd_done(todos: &mut Vec<Todo>, id: u32, undo: bool) {
         Some(todo) => {
             let sign = if undo { "Undo" } else { "Done" };
             todo.completed = !undo;
+            todo.completed_at = if undo { None } else { Some(Local::now()) };
             println!("{}{} #{}: {}", "✔".green(), sign, id, todo.content);
         }
         None => {
