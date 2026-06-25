@@ -53,9 +53,9 @@ pub fn print_todos(label: &str, items: &[&Todo]) {
                 None => String::new(),
             };
             println!(
-                "  {} {} {}  {}{} ({}){}",
-                tags_info,
+                "   {} {} {}  {}{} ({}){}",
                 format!("[{}]", t.id).dimmed(),
+                tags_info,
                 t.content.strikethrough(),
                 "✔ done".green(),
                 completed_time.red(),

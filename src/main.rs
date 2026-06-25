@@ -4,10 +4,12 @@ use clap::Parser;
 use colored::Colorize;
 
 mod cli;
+mod commands;
 mod storage;
 mod todo;
 
 use cli::{Cli, Commands};
+use commands::cmd_stats;
 use storage::{load_todos, save_todos};
 use todo::{Todo, print_todos};
 
@@ -156,6 +158,9 @@ fn main() -> Result<()> {
         Commands::Edit { id, content } => {
             cmd_edit(&mut todos, id, &content);
             save_todos(&todos)?;
+        }
+        Commands::Stats => {
+            cmd_stats(&todos);
         }
     }
 

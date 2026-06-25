@@ -60,4 +60,6 @@ pub enum Commands {
         /// The content for search
         keyword: String,
     },
+    /// show statistics
+    Stats,
 }
