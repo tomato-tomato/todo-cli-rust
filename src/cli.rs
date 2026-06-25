@@ -17,6 +17,9 @@ pub enum Commands {
         // The priority of the task (0: 普通, 1:高, 2:紧急)
         #[arg(short, long, default_value_t = 0)]
         priority: u8,
+        // The tags of the task
+        #[arg(short, long)]
+        tags: Vec<String>,
     },
     /// Edit a todo
     Edit {
@@ -35,6 +38,9 @@ pub enum Commands {
         /// show above the level's priority
         #[arg(short, long)]
         priority: Option<u8>,
+        /// show contain the tag's toso
+        #[arg(short, long)]
+        tag: Option<String>,
     },
     /// Mark a todo as done
     Done {

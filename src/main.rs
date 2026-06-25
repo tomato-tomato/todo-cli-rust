@@ -11,9 +11,16 @@ use cli::{Cli, Commands};
 use storage::{load_todos, save_todos};
 use todo::{Todo, print_todos};
 
-fn cmd_add(todos: &mut Vec<Todo>, content: String, priority: u8) {
+fn cmd_add(todos: &mut Vec<Todo>, content: String, priority: u8, tags: Vec<String>) {
     let new_id = todos.iter().map(|t| t.id).max().unwrap_or(0) + 1;
-    let todo = Todo::new(new_id, content, priority);
+    // 先生成 tags 的展示信息
+    let tags_info = if tags.is_empty() {
+        String::new()
+    } else {
+        format!("{}", tags.join("/").cyan())
+    };
+    // 再传递给 Todo::new （tags的所有权在这里就转移出去了）
+    let todo = Todo::new(new_id, content, priority, tags);
     let priority_info = if priority > 0 {
         format!(
             "   [{}]",
@@ -27,8 +34,9 @@ fn cmd_add(todos: &mut Vec<Todo>, content: String, priority: u8) {
         String::new()
     };
     println!(
-        "{} Added #{}: {}{}",
+        "{} {} Added #{}: {}{}",
         "✔".green(),
+        tags_info,
         todo.id,
         todo.content,
         priority_info
@@ -36,7 +44,7 @@ fn cmd_add(todos: &mut Vec<Todo>, content: String, priority: u8) {
     todos.push(todo);
 }
 
-fn cmd_list(todos: &[Todo], all: bool, priority: Option<u8>) {
+fn cmd_list(todos: &[Todo], all: bool, priority: Option<u8>, tag: Option<String>) {
     // let items: Vec<&Todo> = if all {
     //     todos.iter().collect()
     // } else {
@@ -47,6 +55,10 @@ fn cmd_list(todos: &[Todo], all: bool, priority: Option<u8>) {
         .filter(|t| all || !t.completed)
         .filter(|t| match priority {
             Some(p) => t.priority > p,
+            None => true,
+        })
+        .filter(|t| match &tag {
+            Some(p) => t.tags.join("").to_string().contains(p),
             None => true,
         })
         .collect();
@@ -119,12 +131,16 @@ fn main() -> Result<()> {
     let mut todos = load_todos()?;
 
     match cli.command {
-        Commands::Add { content, priority } => {
-            cmd_add(&mut todos, content, priority);
+        Commands::Add {
+            content,
+            priority,
+            tags,
+        } => {
+            cmd_add(&mut todos, content, priority, tags);
             save_todos(&todos)?;
         }
-        Commands::List { all, priority } => {
-            cmd_list(&todos, all, priority);
+        Commands::List { all, priority, tag } => {
+            cmd_list(&todos, all, priority, tag);
         }
         Commands::Done { id, undo } => {
             cmd_done(&mut todos, id, undo);
